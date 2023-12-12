@@ -2,9 +2,24 @@
 //To Do
 //1. Rewrite to Text User Interface (without cls)
 //2. REFACTOR IT. New Architect. Need Classes, constructors, get, set...
-//3. OPTIMIZE ALGOS. change cout to printf
+//3. OPTIMIZE ALGOS.
 //4. test bugs, look presentation mode
-//5. rewrite without dependencies
+//5. Create Environment. (rewrite without dependencies)
+//6. Create Readme. Add game decription, gif examples, howto install...
+//7. think about scenario, levels...
+/*
+Новая концепция. 
+оставить только пакман мод.
+При запуске, presentation mode (можно рандом карты) и под ним команда start game
+сделать лвлы. карты только с файлов. команда показать решение.
+таблица топ игроков с именами.
+
+Новый Сценарий игры 
+сделать жизни
+сделать еду за очки (которая со временем исчезает) 
+сделать препятствия которые отнимают жизнь.
+*/
+
 //#include<bits/stdc++.h> 
 #include <iostream>
 #include <fstream>
@@ -16,11 +31,11 @@
 #include <algorithm>
 #include <Windows.h>
 
-#include <chrono>
-#include <thread>
+// #include <chrono>
+// #include <thread>
 using namespace std;
  
-const int INF = 1e9;
+const long long INF = 1e9;
 const int coordi[4] = {-1, 0, 1, 0};
 const int coordj[4] = {0, 1, 0, -1};
 const char 
@@ -73,7 +88,8 @@ inline void mySleep(clock_t sec)
     // clock_t start_time = clock();
     // clock_t end_time = sec * 1000 + start_time;
     // while(clock() != end_time);
-    this_thread::sleep_for(chrono::milliseconds(sec*1000));
+    // this_thread::sleep_for(chrono::milliseconds(sec*1000));
+    Sleep(sec * 1000);
 }
  
 class Maze {
@@ -84,6 +100,7 @@ private:
     bool isPackModeON = false;
     bool isAssigned = false;
     bool is_go_left = false;
+    bool isNopath = false;
     long long Best_Score = -1;
     char global_prev_val = EMPTY;
     //From file
@@ -98,7 +115,7 @@ public:
             maze.assign(height, vector <char> (width));
             curr_maze_state.assign(height, vector <char> (width));
             beauty_map.assign(height*CELL_H, vector <char> (width*CELL_W));
-            isAssigned = true;//
+            isAssigned = true;
         }
         else
         {
@@ -114,9 +131,7 @@ public:
  
     void settings()
     {
-        ifstream fin("settings.txt");//
-        // fin.close();
-        // fin.open("settings.txt");
+        ifstream fin("settings.txt");
         fin >> saved_maze_id;
         fin.close();
     }
@@ -128,10 +143,10 @@ public:
         fout.close();
     }
  
-    void create_random_maze() // no guaranties of solving
+    void create_random_maze()
     {
-        height = rand() % MAX_HEIGHT;
-        width = rand() % MAX_WIDTH;
+        height = rand() % (MAX_HEIGHT-2)+2;
+        width = rand() % (MAX_WIDTH-2)+2;
         init();
         string s = ".*#";
         for (int i = 0; i < height; i++)
@@ -152,20 +167,46 @@ public:
         maze[fix][fiy] = FINISH;
         curr_maze_state[stx][sty] = ROBOT;
         curr_maze_state[fix][fiy] = FINISH;
-        //bfs();
+    }
+
+    int choose_number() {
+        bool gotIt = false;
+        int id;
+        for (int i = 0; i < 7; i++) {
+            printf("Choose maze number from 1 to %d\n", saved_maze_id);
+            string sid;
+            cin >> sid;
+            stringstream ss(sid);
+            if ((ss >> id).fail()) {
+                puts("Can not understand your number :(");
+            } else if (id < 1) {
+                puts("your number is too small. Minimal number - 1");
+            } else if (id > saved_maze_id) {
+                printf("your number is too big. Maximal number - %d\n", saved_maze_id);
+            } else {
+                gotIt = true;
+                break;
+            }
+            puts("Try again");
+        }
+
+        if (!gotIt) {
+            puts("OK. I'll choose file randomly");
+            id = rand() % saved_maze_id+1; 
+        }
+
+        return id;
     }
  
     void read_maze_from_file(bool isReaden)
     {       
-        int id = rand() % saved_maze_id+1;
-        stringstream ss; 
+        int id = choose_number();
+        stringstream ss;
         ss << id;
         string file_name = "map" + ss.str() + ".txt";
         string file_path = "maps/";
         string file = file_path+file_name; 
         ifstream fin(file);
-        // fin.close();
-        // fin.open(file);//
         fin >> height >> width;
         init();
         for (int i = 0; i < height; i++)
@@ -183,7 +224,7 @@ public:
         saved_maze_id++;
         stringstream ss; 
         ss << saved_maze_id;
-        string file_name = "map" + ss.str() + ".txt";//
+        string file_name = "map" + ss.str() + ".txt";
         string file = file_path+file_name;
         ofstream fout(file);
         fout << height << " " << width << '\n';
@@ -192,20 +233,34 @@ public:
                 fout << maze[i][j];
  
         fout.close();
+        update_settings();
     }
  
-    void edit_maze()
+    int edit_maze()
     {   
+        int id;
+        puts("Edit last seen maze? yes/no");
+        string ans;
+        cin >> ans;
+        if (ans == "yes" || ans == "YES" || ans == "Yes") {
+            save_maze();
+            id = saved_maze_id;
+        } else {
+            puts("You can choose from old mazes one");
+            id = choose_number();
+        }
+
         stringstream ss; 
-        ss << saved_maze_id;//
+        ss << id;
         string file_path = "maps\\";
-        string file_name = "map" + ss.str() + ".txt";//
+        string file_name = "map" + ss.str() + ".txt";
         string file = file_path + file_name;
         system(file.c_str());
         //edit with sublime
-        //string cmd = "C:\\Program Files\\Sublime Text 3\\sublime_text.exe " + file_name;
+        //string cmd = "C:\\Program Files\\Sublime Text 3\\sublime_text.exe " + file;
         //system(cmd.c_str()); 
         system("pause");
+        return id;
     }
  
     void start_maze()
@@ -243,7 +298,7 @@ public:
             {
                 create_random_maze();
                 printf("%d %d\n\n", height, width);
-                isAssigned = true;
+                // isAssigned = true;
                 if (isPackModeON)
                     print_beauty_map();
                 else
@@ -254,7 +309,7 @@ public:
                 read_maze_from_file(isReaden);
                 printf("%d %d\n\n", height, width);
                 isReaden = true;
-                isAssigned = true;
+                // isAssigned = true;
                 if (isPackModeON)
                     print_beauty_map();
                 else
@@ -286,15 +341,13 @@ public:
             else if (action == '5')
             {
                 save_maze();
-                cout << "The last maze saved in file: 'map" << saved_maze_id << ".txt'\n";
+                cout << "The last maze was saved in file: 'map" << saved_maze_id << ".txt'\n";
                 mySleep(2);
             } 
             else if (action == '6')
             {
-                save_maze();
-                edit_maze();
-                //need to add choice of maze to edit
-                cout << "The last maze edited in file: 'map" << saved_maze_id << ".txt'\n";
+                int id = edit_maze();
+                cout << "The maze was edited in file: 'map" << id << ".txt'\n";
                 mySleep(2);
             }
             else if (action == '7')
@@ -305,7 +358,8 @@ public:
                 curr_maze_state = maze;
                 global_prev_val = EMPTY;
                 vector <cell> path = bfs();
-                print_path(path, 0);
+                if (!isNopath)
+                    print_path(path, 0);
             } 
             else if (action == '8')
             {
@@ -323,16 +377,14 @@ public:
             }
             else if (action == 'q')
             {
-                update_settings();
                 finish_view();
                 mySleep(2);
                 break;
             } else if (action != '#') {
                 puts("Unknown command");
             }
- 
-            puts("");
-            puts("Generate new maze      - press 1");
+
+            puts("\nGenerate new maze      - press 1");
             puts("Read maze from file    - press 2");
             cout << "Turn " << _switch << " 'Pacman Mode' - press 3\n";
             puts("Presentation mode      - press 4");
@@ -384,7 +436,7 @@ public:
         queue <cell> q;
         vector <vector <bool> > used(height, vector <bool> (width, false));
         vector <vector <cell> > p(height, vector <cell> (width));
-        vector <vector <int> > d(height, vector <int> (width, INF));
+        vector <vector <long long> > d(height, vector <long long> (width, INF));
      
         q.push(start); 
         d[start.x][start.y] = 0;
@@ -405,7 +457,7 @@ public:
                     0 <= j && j < width &&
                     /*!used[i][j] &&*/ maze[i][j] != WALL)
                 {
-                    int dist = d[current.x][current.y] + 1 + (maze[i][j] == DELAY);
+                    long long dist = d[current.x][current.y] + 1 + (maze[i][j] == DELAY);
                     if (dist < d[i][j])
                     {                      
                         used[i][j] = true;
@@ -421,12 +473,15 @@ public:
         if (!used[finish.x][finish.y])
         {
             puts("No path!");
+            isNopath = true;
+            path.push_back(start); // fictive data 
             //system("pause");
             //exit(0);
         }
         else 
         {
-            for (cell v = finish; v.x !=-1 && v.y != -1; v = p[v.x][v.y])
+            isNopath = false;
+            for (cell v = finish; v.x != -1 && v.y != -1; v = p[v.x][v.y])
                 path.push_back(v);
             reverse(path.begin(), path.end());
             /*
@@ -434,22 +489,24 @@ public:
             for (size_t i=0; i<int(path.size()); ++i)
                 cout << path[i].x + 1 << " " << path[i].y + 1 << '\n';
             puts("");
-            system("pause");//*/
+            system("pause");
+            */
         }
+
         return path;
     }
  
-    void print_path(vector <cell> path, int iter_id)
+    void print_path(vector <cell> path, long long iter_id)
     { 
         char prev_val = global_prev_val; // start position value without ROBOT
         cell current = start;
-        for (int it = iter_id; it < int(path.size()); it++)
+        for (long long it = iter_id; it < (long long)(path.size()); it++)
         {
             if (iter_id == 0)
                 mySleep(1);
-            system("cls");
+            system("cls");//
  
-            cell prev = path[it-1*(it>0)];//current;
+            cell prev = path[it-1*(it>0)]; //current;
             current = path[it];
             if (current.x >= 0 && current.x < height &&
                 current.y >= 0 && current.y < width)
@@ -462,8 +519,11 @@ public:
                 } else if (prev.y < current.y) {
                     is_go_left = false;
                 }
+                
+                //optimize_print_map(prev, current);//
+
                 /*
-                if (it + 1 < int(path.size())) {
+                if (it + 1 < long long(path.size())) {
                     cell next_step = path[it+1];
                     if (next_step.y < current.y) {
                         is_go_left = true;
@@ -490,7 +550,31 @@ public:
         }
         puts("");
     }
- 
+
+
+ ////////////////////////////////////////////////////////
+    void optimize_print_map(cell prev, cell current) {
+        CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
+        // GetConsoleScreenBufferInfo(h, &bufferInfo);
+        COORD curr_place;
+        curr_place.X = current.x;
+        curr_place.Y = current.y;
+        COORD prev_place;
+        prev_place.X = prev.x;
+        prev_place.Y = prev.y;
+        // update loop
+        //while (updating)
+        //{
+        SetConsoleCursorPosition(hConsole, curr_place);
+        putchar(ROBOT);
+        SetConsoleCursorPosition(hConsole, prev_place);
+        putchar(global_prev_val);
+            //...
+            // insert combinations of sprintf, printf, etc. here
+            //...
+        //}
+    }
+
     void print_maze()
     {
         for (int i = 0; i < height; i++, puts(""))
@@ -695,21 +779,25 @@ public:
         cout << "Good bye " << name << "!\n";
     }
  
-    void offline_mode() //
+    void offline_mode() // 
     {
         while (true)
         {
             create_random_maze();
             printf("%d %d\n\n", height, width);
-            isAssigned = true;
+            //isAssigned = true;
             if (isPackModeON)
                 print_beauty_map();
             else
                 print_maze();
+            curr_maze_state = maze;
+            global_prev_val = EMPTY;
             vector <cell> path = bfs();
-            print_path(path, 0);
-            puts("Save current map       - press s");
+            if (!isNopath)
+                print_path(path, 0);
+            puts("Save current maze       - press s");
             puts("Exit                   - press q or CTRL+C");
+            mySleep(2);
             if (GetKeyState('Q') & 0x8000/*Check if high-order bit is set (1 << 15)*/)
             {
                 break;
@@ -718,7 +806,6 @@ public:
             {
                 save_maze();
             }
-            mySleep(1);
         }
     }
  
@@ -741,22 +828,22 @@ public:
             }
             else if(GetKeyState(VK_LEFT) & 0x8000/*Check if high-order bit is set (1 << 15)*/)
             {
-                mySleep(0.5);//
+                mySleep(0.5);
                 next_step.y -= 1;
             }
             else if(GetKeyState(VK_RIGHT) & 0x8000/*Check if high-order bit is set (1 << 15)*/)
             {
-                mySleep(0.5);//
+                mySleep(0.5);
                 next_step.y += 1;
             }
             else if(GetKeyState(VK_UP) & 0x8000/*Check if high-order bit is set (1 << 15)*/)
             {
-                mySleep(0.5);//
+                mySleep(0.5);
                 next_step.x -= 1;
             } 
             else if(GetKeyState(VK_DOWN) & 0x8000/*Check if high-order bit is set (1 << 15)*/)
             {
-                mySleep(0.5);//
+                mySleep(0.5);
                 next_step.x += 1;
             }
             
@@ -786,76 +873,3 @@ int main()
     new_maze.start_maze();
     return 0;
 }
- 
- 
-//map1.txt
-// 10 20
-// #*.*....#.#.#..#.#.#
-// .#.#.#..#.###.##.***
-// ...*.#.****.**.***.0
-// ##....#....####...##
-// #*.*....#.#.#..#.#.#
-// ....####...##....###
-// ....................
-// ******************.#
-// ##################..
-// ..............x...*#
- 
- 
-// 20 20
-// #*.*....#.#.#..#.#.#
-// .#.#.#..#.###.##.***
-// ...*.#.****.**.***.0
-// ##....#....####...##
-// #*.*....#.#.#..#.#.#
-// ....####...##....###
-// ....................
-// ******************.#
-// ..................*#
-// .#################*#
-// .................**#
-// #####...........****
-// ...........#.#.#..#.
-// ###.##.***##........
-// ####...##.......****
-// *************....###
-// ###############.....
-// ######...........**.
-// .................*x.
-// ....................
- 
-// 20 20
-// .*.*....*.*.*..*.*.*
-// ..........***.**.***
-// ...*.*.****.**.***..
-// **....*....****...**
-// **.*....*.*.*..*.*.*
-// ....****...**....***
-// ....................
-// ******************.*
-// ..................**
-// .*******************
-// .................***
-// *****...........****
-// ...........*.*.*..*.
-// ***.**.*****........
-// ****...**.......****
-// *************....***
-// ***************.....
-// ******...........**.
-// .................*..
-// ....................
-// 3 6
- 
-// 4 7
-// 0*.*...
-// .#.#.#.
-// ...*.#.
-// ##....x
- 
-// 4 7
-// .*.*...
-// ...*.*.
-// ...*.*.
-// .....**
-// 3 6

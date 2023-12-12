@@ -1,0 +1,1 @@
+ g++ -static-libgcc -static-libstdc++ -static maze.cpp -o maze
